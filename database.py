@@ -16,7 +16,7 @@ def init_db():
             login         TEXT    NOT NULL UNIQUE,
             password      TEXT    NOT NULL,
             role          TEXT    NOT NULL,
-            status        TEXT    NOT NULL,
+            status        TEXT    NOT NULL DEFAULT 'activo' CHECK(status IN ('activo', 'inactivo')),
             created_at    TEXT    NOT NULL
         );
         CREATE TABLE IF NOT EXISTS cars (
@@ -25,11 +25,11 @@ def init_db():
             model       TEXT    NOT NULL,
             year        INTEGER NOT NULL,
             plate       TEXT    NOT NULL UNIQUE,
-            category    TEXT    NOT NULL CHECK(category IN ('economy', 'compact', 'midsize', 'suv', 'luxury')),
-            fuel_type   TEXT    NOT NULL CHECK(fuel_type IN ('gasoline', 'diesel', 'electric', 'hybrid')),
+            category    TEXT    NOT NULL CHECK(category IN ('económico', 'compacto', 'suv', 'luxo')),
+            fuel_type   TEXT    NOT NULL CHECK(fuel_type IN ('gasolina', 'diesel', 'eléctrico', 'hybrido')),
             insurance   TEXT    NOT NULL,
             daily_rate  REAL    NOT NULL,
-            status      TEXT    NOT NULL DEFAULT 'available' CHECK(status IN ('available', 'rented', 'maintenance'))
+            status      TEXT    NOT NULL DEFAULT 'disponível' CHECK(status IN ('disponível', 'alugado', 'manutenção'))
         );
         CREATE TABLE IF NOT EXISTS customers (
             id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -41,7 +41,7 @@ def init_db():
             phone       TEXT NOT NULL,
             address     TEXT NOT NULL,
             license_no  TEXT NOT NULL UNIQUE,
-            status      TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active', 'inactive')),
+            status      TEXT NOT NULL DEFAULT 'activo' CHECK(status IN ('activo', 'inactivo')),
             created_at  TEXT NOT NULL
         );
         CREATE TABLE IF NOT EXISTS rentals (
@@ -52,7 +52,7 @@ def init_db():
             end_date     TEXT    NOT NULL,
             return_date  TEXT,
             total_cost   REAL    NOT NULL CHECK(total_cost >= 0),
-            status       TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active', 'returned'))
+            status       TEXT NOT NULL DEFAULT 'activo' CHECK(status IN ('activo', 'devolvido'))
         );
         CREATE TABLE IF NOT EXISTS invoices (
             id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -61,7 +61,7 @@ def init_db():
             amount      REAL    NOT NULL CHECK(amount >= 0),
             tax         REAL    NOT NULL DEFAULT 0 CHECK(tax >= 0),
             total       REAL    NOT NULL CHECK(total >= 0),
-            status      TEXT    NOT NULL DEFAULT 'unpaid' CHECK(status IN ('paid', 'unpaid'))
+            status      TEXT    NOT NULL DEFAULT 'não pago' CHECK(status IN ('pago', 'não pago'))
         );
     """)
 
@@ -69,8 +69,8 @@ def init_db():
         #pw_hash, salt = hash_password("admin123")
         cursor.execute(
             "INSERT INTO users (name, login, password, role, status, created_at) "
-            "VALUES (?, ?, ?, 'admin', 'active', ?)",
-            ("admin", "admin", "admin123", date.today().isoformat())
+            "VALUES (?, ?, ?, 'admin', 'activo', ?)",
+            ("Administrador", "admin", "admin123", date.today().isoformat())
         )
     
     conn.commit()
@@ -88,3 +88,19 @@ def authenticate(username: str, password: str) -> dict | None:
     if user:
         return {"id": user[0], "name": user[1], "login": user[2], "password": user[3], "role": user[4]}
     return None
+
+
+def create_user(name: str, login: str, password: str, role: str) -> bool:
+    try:
+        conn = get_connection()
+        conn.execute(
+            "INSERT INTO users (name, login, password, role, status, created_at) "
+            "VALUES (?, ?, ?, ?, 'activo', ?)",
+            (name, login, password, role, date.today().isoformat())
+        )
+        conn.commit()
+        return True
+    except sqlite3.IntegrityError:
+        return False
+    finally:
+        conn.close()

@@ -26,7 +26,7 @@ def init_db():
             year        INTEGER NOT NULL,
             plate       TEXT    NOT NULL UNIQUE,
             category    TEXT    NOT NULL CHECK(category IN ('económico', 'compacto', 'suv', 'luxo')),
-            fuel_type   TEXT    NOT NULL CHECK(fuel_type IN ('gasolina', 'diesel', 'eléctrico', 'hybrido')),
+            fuel_type   TEXT    NOT NULL CHECK(fuel_type IN ('gasolina', 'diesel', 'eléctrico', 'híbrido')),
             insurance   TEXT    NOT NULL,
             daily_rate  REAL    NOT NULL,
             status      TEXT    NOT NULL DEFAULT 'disponível' CHECK(status IN ('disponível', 'alugado', 'manutenção'))
@@ -74,20 +74,8 @@ def init_db():
     
     conn.commit()
     conn.close()
-    
-def authenticate(username: str, password: str) -> dict | None:
-    conn = get_connection()
-    user = conn.execute(
-        "SELECT id, name, login, password, role "
-        "FROM users WHERE login = ? AND password = ?",
-        (username, password)
-    ).fetchone()
-    conn.close()
 
-    if user:
-        return {"id": user[0], "name": user[1], "login": user[2], "password": user[3], "role": user[4]}
-    return None
-
+########## UTILITIES #####
 def statistics() -> dict | None:
     conn = get_connection()
     stat = conn.execute(
@@ -103,6 +91,78 @@ def statistics() -> dict | None:
 
     if stat:
         return {"total_cars": stat[0], "available_cars": stat[1], "total_customers": stat[2], "active_rentals": stat[3], "total_revenue": stat[4], "unpaid_invoices": stat[5]}
+    return None
+
+
+########## CARS #####
+def create_car(brand: str, model: str, year: int, plate: str, category: str, fuel_type: str, insurance: str, daily_rate: float) -> bool:
+    try:
+        conn = get_connection()
+        conn.execute("INSERT INTO cars (brand, model, year, plate, category, fuel_type, insurance, daily_rate, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (brand, model, year, plate, category, fuel_type, insurance, daily_rate, 'disponível'))
+        conn.commit()
+        return True
+    except sqlite3.IntegrityError:
+        return False
+    finally:
+        conn.close()
+
+########## CUSTOMERS #####
+def create_customer(name: str, nif: str, id_card: str, birth_date: str, email: str, phone: str, address: str, license_no: str) -> bool:
+    try:
+        conn = get_connection()
+        conn.execute("INSERT INTO customers (name, nif, id_card, birth_date, email, phone, address, license_no, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (name, nif, id_card, birth_date, email, phone, address, license_no, 'activo', date.today().isoformat()))
+        conn.commit()
+        return True
+    except sqlite3.IntegrityError:
+        return False
+    finally:
+        conn.close()
+
+########## RENTALS #####
+def create_rental(car_id: int, customer_id: int, start_date: str, end_date: str) -> bool:
+    try:
+        conn = get_connection()
+        conn.execute(
+            "INSERT INTO rentals (car_id, customer_id, start_date, end_date) VALUES (?, ?, ?, ?)",
+            (car_id, customer_id, start_date, end_date)
+        )
+        conn.commit()
+        return True
+    except sqlite3.IntegrityError:
+        return False
+    finally:
+        conn.close()
+
+########## INVOICES #####
+def create_invoice(rental_id: int, issue_date: str, amount: float) -> bool:
+    try:
+        conn = get_connection()
+        conn.execute(
+            "INSERT INTO invoices (rental_id, issue_date, amount) VALUES (?, ?, ?)",
+            (rental_id, issue_date, amount)
+        )
+        conn.commit()
+        return True
+    except sqlite3.IntegrityError:
+        return False
+    finally:
+        conn.close()
+
+
+########## USERS #####
+def authenticate(username: str, password: str) -> dict | None:
+    conn = get_connection()
+    user = conn.execute(
+        "SELECT id, name, login, password, role "
+        "FROM users WHERE login = ? AND password = ?",
+        (username, password)
+    ).fetchone()
+    conn.close()
+
+    if user:
+        return {"id": user[0], "name": user[1], "login": user[2], "password": user[3], "role": user[4]}
     return None
 
 def create_user(name: str, login: str, password: str, role: str) -> bool:

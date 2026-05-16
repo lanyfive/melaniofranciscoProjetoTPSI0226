@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import messagebox
-from database import authenticate
+from database import authenticate, create_user
 
 class LoginWindow:
     def __init__(self, root, success):
@@ -52,3 +52,8 @@ class LoginWindow:
             self.success() # Executa a função para mostrar a principal
         else:
             messagebox.showerror("Erro", "Utilizador ou senha inválidos")
+
+    def insert_user(self, nome, login, role):
+            if not nome.strip() or not login.strip():
+                raise ValueError("Nome e login são obrigatórios.")
+            create_user(nome, login, "123456", role)

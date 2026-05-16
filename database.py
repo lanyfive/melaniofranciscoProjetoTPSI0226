@@ -66,7 +66,6 @@ def init_db():
     """)
 
     if cursor.execute("SELECT COUNT(*) FROM users").fetchone()[0] == 0:
-        #pw_hash, salt = hash_password("admin123")
         cursor.execute(
             "INSERT INTO users (name, login, password, role, status, created_at) "
             "VALUES (?, ?, ?, 'admin', 'activo', ?)",
@@ -89,6 +88,22 @@ def authenticate(username: str, password: str) -> dict | None:
         return {"id": user[0], "name": user[1], "login": user[2], "password": user[3], "role": user[4]}
     return None
 
+def statistics() -> dict | None:
+    conn = get_connection()
+    stat = conn.execute(
+        "SELECT "
+        "(SELECT COUNT(*) FROM cars) AS total_cars, "
+        "(SELECT COUNT(*) FROM cars WHERE status = 'disponível') AS available_cars, "
+        "(SELECT COUNT(*) FROM customers) AS total_customers, "
+        "(SELECT COUNT(*) FROM rentals  WHERE status='activo') AS active_rentals, "
+        "(SELECT COALESCE(SUM(total), 0) FROM invoices WHERE status='pago') AS total_revenue, "
+        "(SELECT COUNT(*) FROM invoices WHERE status='não pago') AS unpaid_invoices"
+    ).fetchone()
+    conn.close()
+
+    if stat:
+        return {"total_cars": stat[0], "available_cars": stat[1], "total_customers": stat[2], "active_rentals": stat[3], "total_revenue": stat[4], "unpaid_invoices": stat[5]}
+    return None
 
 def create_user(name: str, login: str, password: str, role: str) -> bool:
     try:

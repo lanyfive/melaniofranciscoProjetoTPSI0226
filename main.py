@@ -137,33 +137,19 @@ class MainWindow (tk.Tk):
             self.rentals_table.delete(item)
     
         search = self.search_var.get().strip().lower()
-        rentals = self.rental_service.get_all_rentals()
-        cars = self.car_service.get_all_cars()
-        customers = self.customer_service.get_all_customers()
-
-        car_map = {}
-        for car in cars:
-            car_map[car["id"]] = (f"{car['brand']} {car['model']}")
-
-        customer_map = {}
-        for customer in customers:
-            customer_map[customer["id"]] = (customer["name"])
         
-        filtered_rentals = []
+        rentals = self.rental_service.get_all_rentals()
+
+        if search:
+            rentals = [
+                rental for rental in rentals
+                if (
+                    search in rental["car"].lower()
+                    or search in rental["customer"].lower()
+                )
+            ]
 
         for rental in rentals:
-            car_name = car_map.get(rental["car_id"], "Desconhecido")
-            customer_name = customer_map.get(rental["customer_id"], "Desconhecido")
-            if (not search or search in car_name.lower() or search in customer_name.lower()):
-                filtered_rentals.append({
-                    "id": rental["id"],
-                    "car": car_name,
-                    "customer": customer_name,
-                    "start_date": rental["start_date"],
-                    "end_date": rental["end_date"]
-                })
-
-        for rental in filtered_rentals:
             self.rentals_table.insert(
                 "",
                 "end",
@@ -568,7 +554,7 @@ class MainWindow (tk.Tk):
         win = tk.Toplevel(self)
 
         win.title("Alugar Carro")
-        win.geometry("400x750")
+        win.geometry("400x500")
         win.configure(bg="#F4F6FA")
 
         cars = self.car_service.get_all_cars()
@@ -598,20 +584,24 @@ class MainWindow (tk.Tk):
         tk.Label(win, text="Data de Fim:", bg="#F4F6FA", font=("Arial", 12)).pack(anchor="w", padx=30, pady=(15, 5))
         ent_end_date = tk.Entry(win, font=("Arial", 11))
         ent_end_date.pack(fill="x", padx=30, ipady=5)
+        tk.Label(win, text="Custo Total:", bg="#F4F6FA", font=("Arial", 12)).pack(anchor="w", padx=30, pady=(15, 5))
+        ent_total_cost = tk.Entry(win, font=("Arial", 11))
+        ent_total_cost.pack(fill="x", padx=30, ipady=5)
 
         def save_rental():
             car_label = combo_car.get()
             customer_label = combo_customer.get()
             start_date = ent_start_date.get().strip()
             end_date = ent_end_date.get().strip()
+            total_cost = ent_total_cost.get().strip()
 
-            if not car_label or not customer_label or not start_date or not end_date:
+            if not car_label or not customer_label or not start_date or not end_date or not total_cost:
                 messagebox.showwarning("Aviso", "Preencha todos os campos")
                 return
 
             car_id = car_map[car_label]
             customer_id = customer_map[customer_label]
-            self.handle_insert_rental(car_id, customer_id, start_date, end_date)
+            self.handle_insert_rental(car_id, customer_id, start_date, end_date, float(total_cost))
             win.destroy()
 
         tk.Button(win, text="Salvar", bg="#27ae60", fg="white", command=save_rental).pack(pady=25)

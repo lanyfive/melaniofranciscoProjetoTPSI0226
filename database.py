@@ -179,12 +179,12 @@ def get_all_customers() -> list[dict]:
 
 
 ########## RENTALS #####
-def create_rental(car_id: int, customer_id: int, start_date: str, end_date: str) -> bool:
+def create_rental(car_id: int, customer_id: int, start_date: str, end_date: str, total_cost: float) -> bool:
     try:
         conn = get_connection()
         conn.execute(
-            "INSERT INTO rentals (car_id, customer_id, start_date, end_date) VALUES (?, ?, ?, ?)",
-            (car_id, customer_id, start_date, end_date)
+            "INSERT INTO rentals (car_id, customer_id, start_date, end_date, total_cost, status) VALUES (?, ?, ?, ?, ?, 'activo')",
+            (car_id, customer_id, start_date, end_date, total_cost)
         )
         conn.commit()
         return True
@@ -220,7 +220,7 @@ def delete_rental(rental_id: int) -> bool:
 
 def get_all_rentals() -> list[dict]:
     conn = get_connection()
-    rentals = conn.execute("""SELECT rentals.id, cars.model AS car, customers.name AS customer, rentals.start_date, rentals.end_date
+    rentals = conn.execute("""SELECT rentals.id, cars.model AS car, customers.name AS customer, rentals.start_date, rentals.end_date, rentals.total_cost
     FROM rentals
     JOIN cars
     ON cars.id = rentals.car_id
@@ -228,7 +228,7 @@ def get_all_rentals() -> list[dict]:
     ON customers.id = rentals.customer_id
                            """).fetchall()
     conn.close()
-    return [{"id": rental[0], "car": rental[1], "customer": rental[2], "start_date": rental[3], "end_date": rental[4]} for rental in rentals]
+    return [{"id": rental[0], "car": rental[1], "customer": rental[2], "start_date": rental[3], "end_date": rental[4], "total_cost": rental[5]} for rental in rentals]
 
 
 ########## INVOICES #####

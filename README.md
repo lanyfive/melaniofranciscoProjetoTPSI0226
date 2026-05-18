@@ -3,6 +3,8 @@
 
 Aplicação desktop desenvolvido em Python para gestão de aluguer de carros, clientes, utilizadores e faturação automática.
 
+Aplicação em atualização...
+
 ---
 
 # Funcionalidades
@@ -61,8 +63,6 @@ project/
 ├── database.py
 ├── login.py
 ├── services/
-├── models/
-├── views/
 ├── rentacar.db
 └── README.md
 ```

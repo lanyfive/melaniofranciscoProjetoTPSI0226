@@ -173,8 +173,27 @@ class MainWindow (tk.Tk):
 # =========================================
 # HANDLERS - INVOICES
 # =========================================
-    def handle_insert_invoice(self):
-        pass
+    def handle_update_invoice(self):
+        selected = self.invoices_table.selection()
+        if not selected:
+            messagebox.showwarning("Aviso", "Selecione uma fatura")
+            return
+
+        values = self.invoices_table.item(selected[0])["values"]
+        invoice_id = values[0]
+
+        confirm = messagebox.askyesno("Confirmar", "Deseja pagar a fatura?")
+        if not confirm:
+            return
+
+        try:
+            self.invoice_service.pay_invoice(invoice_id)
+            messagebox.showinfo("Sucesso", "Fatura paga com sucesso.")
+            self.show_invoices()
+        except ValueError as e:
+            messagebox.showerror("Validação", str(e))
+        except Exception as e:
+            messagebox.showerror("Erro", str(e))
 
     def handle_get_all_invoices(self):
         
@@ -643,9 +662,9 @@ class MainWindow (tk.Tk):
         search_entry.pack(side="left", padx=(0, 10), ipady=5)
         btn_search = tk.Button(self.top_frame, text="Filtrar", bg="#2980b9", command=self.handle_get_all_invoices, fg="white", padx=15)
         btn_search.pack(side="left")
-        btn_update = tk.Button(self.top_frame, text="Atualizar", bg="#2980b9", fg="white")
+        btn_update = tk.Button(self.top_frame, text="Exportar", bg="#2980b9", fg="white")
         btn_update.pack(side="right", padx=5)
-        btn_insert = tk.Button(self.top_frame, text="Inserir", bg="#2980b9", fg="white")
+        btn_insert = tk.Button(self.top_frame, text="Pagar Fatura", bg="#2980b9", command=self.show_invoice_payment, fg="white")
         btn_insert.pack(side="right", padx=5)
 
         table_frame = tk.Frame(self.invoices_content, bg="#F4F6FA")
@@ -671,6 +690,32 @@ class MainWindow (tk.Tk):
 
         self.handle_get_all_invoices()
 
+    def show_invoice_payment(self):
+        selected = self.invoices_table.selection()
+
+        if not selected:
+            messagebox.showwarning("Aviso", "Selecione uma fatura")
+            return
+       
+        values = self.invoices_table.item(selected[0])["values"]
+        invoice_id = values[0]
+        current_status = values[6]
+       
+        if current_status == "pago":
+            messagebox.showinfo("Informação", "A fatura já está paga")
+            return
+       
+        confirm = messagebox.askyesno("Confirmar", "Deseja pagar esta fatura?")
+
+        if not confirm:
+            return
+        
+        try:
+            self.invoice_service.pay_invoice(invoice_id)
+            messagebox.showinfo("Sucesso", "Fatura paga com sucesso")
+            self.handle_get_all_invoices()
+        except Exception as e:
+            messagebox.showerror("Erro", str(e))
 
 # =========================================
 # UTILIZADORES

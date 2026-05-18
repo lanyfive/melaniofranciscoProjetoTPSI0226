@@ -262,13 +262,12 @@ def get_all_rentals() -> list[dict]:
 
 
 ########## INVOICES #####
-def create_invoice(rental_id: int, issue_date: str, amount: float) -> bool:
+def update_invoice(invoice_id: int) -> bool:
     try:
         conn = get_connection()
         conn.execute(
-            "INSERT INTO invoices (rental_id, issue_date, amount) VALUES (?, ?, ?)",
-            (rental_id, issue_date, amount)
-        )
+            "UPDATE invoices SET status = 'pago' WHERE id = ?",
+            (invoice_id,))
         conn.commit()
         return True
     except sqlite3.IntegrityError:

@@ -128,8 +128,15 @@ class MainWindow (tk.Tk):
 # =========================================
 # HANDLERS - RENTALS
 # =========================================
-    def handle_insert_rental(self):
-        pass
+    def handle_insert_rental(self, car_id, customer_id, start_date, end_date, total_cost):
+        try:
+            self.rental_service.create_rental(car_id, customer_id, start_date, end_date, total_cost)
+            messagebox.showinfo("Sucesso", "Aluguer criado com sucesso.")
+            self.show_rentals()
+        except ValueError as e:
+            messagebox.showerror("Validação", str(e))
+        except Exception as e:
+            messagebox.showerror("Erro", str(e))
     
     def handle_get_all_rentals(self):
         
@@ -158,7 +165,8 @@ class MainWindow (tk.Tk):
                     rental["car"],
                     rental["customer"],
                     rental["start_date"],
-                    rental["end_date"]
+                    rental["end_date"],
+                    rental["total_cost"]
                 )
             )
 
@@ -533,7 +541,7 @@ class MainWindow (tk.Tk):
 
         table_frame = tk.Frame(self.rentals_content, bg="#F4F6FA")
         table_frame.pack(fill="both", expand=True, padx=20, pady=20)
-        columns = ("id", "car_id", "customer_id", "start_date", "end_date")
+        columns = ("id", "car", "customer", "start_date", "end_date", "total_cost")
 
         self.rentals_table = ttk.Treeview(table_frame, columns=columns, show="headings")
         self.rentals_table.heading("id", text="ID")
@@ -541,11 +549,13 @@ class MainWindow (tk.Tk):
         self.rentals_table.heading("customer", text="Cliente")
         self.rentals_table.heading("start_date", text="Data de Início")
         self.rentals_table.heading("end_date", text="Data de Fim")
+        self.rentals_table.heading("total_cost", text="Custo Total")
         self.rentals_table.column("id", width=5)
         self.rentals_table.column("car", width=80)
         self.rentals_table.column("customer", width=10)
         self.rentals_table.column("start_date", width=10)
         self.rentals_table.column("end_date", width=10)
+        self.rentals_table.column("total_cost", width=10)
         self.rentals_table.pack(fill="both", expand=False)
 
         self.handle_get_all_rentals()

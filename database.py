@@ -63,6 +63,36 @@ def init_db():
             total       REAL    NOT NULL CHECK(total >= 0),
             status      TEXT    NOT NULL DEFAULT 'não pago' CHECK(status IN ('pago', 'não pago'))
         );
+        CREATE TRIGGER IF NOT EXISTS trg_rental_insert_update_car
+        AFTER INSERT ON rentals
+        BEGIN
+
+            UPDATE cars
+            SET status = 'alugado'
+            WHERE id = NEW.car_id;
+
+        END;
+        CREATE TRIGGER IF NOT EXISTS trg_create_invoice_after_rental
+        AFTER INSERT ON rentals
+        BEGIN
+            INSERT INTO invoices (
+                rental_id,
+                issue_date,
+                amount,
+                tax,
+                total,
+                status
+            )
+            VALUES (
+                NEW.id,
+                DATE('now'),
+                NEW.total_cost,
+                NEW.total_cost * 0.23,
+                NEW.total_cost + (NEW.total_cost * 0.23),
+                'não pago'
+            );
+
+        END;
     """)
 
     if cursor.execute("SELECT COUNT(*) FROM users").fetchone()[0] == 0:
@@ -246,6 +276,15 @@ def create_invoice(rental_id: int, issue_date: str, amount: float) -> bool:
     finally:
         conn.close()
 
+def get_all_invoices() -> list[dict]:
+    conn = get_connection()
+    invoices = conn.execute("""SELECT invoices.id, rentals.id AS rental_id, invoices.issue_date, invoices.amount, invoices.tax, invoices.total, invoices.status
+    FROM invoices
+    JOIN rentals
+    ON rentals.id = invoices.rental_id
+                           """).fetchall()
+    conn.close()
+    return [{"id": invoice[0], "rental_id": invoice[1], "issue_date": invoice[2], "amount": invoice[3], "tax": invoice[4], "total": invoice[5], "status": invoice[6]} for invoice in invoices]
 
 ########## USERS #####
 def authenticate(username: str, password: str) -> dict | None:

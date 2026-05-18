@@ -187,7 +187,7 @@ class MainWindow (tk.Tk):
         if search:
             invoices = [
                 invoice for invoice in invoices
-                if search in invoice["rental_id"].lower()
+                if search in str(invoice["rental_id"])
             ]
 
         for invoice in invoices:
@@ -197,7 +197,11 @@ class MainWindow (tk.Tk):
                 values=(
                     invoice["id"],
                     invoice["rental_id"],
-                    invoice["issue_date"]
+                    invoice["issue_date"],
+                    invoice["amount"],
+                    invoice["tax"],
+                    invoice["total"],
+                    invoice["status"]
                 )
             )
 
@@ -646,20 +650,24 @@ class MainWindow (tk.Tk):
 
         table_frame = tk.Frame(self.invoices_content, bg="#F4F6FA")
         table_frame.pack(fill="both", expand=True, padx=20, pady=20)
-        columns = ("id", "rental_id", "issue_date", "amount", "paid")
+        columns = ("id", "rental_id", "issue_date", "amount", "tax", "total", "status")
 
-        self.cars_table = ttk.Treeview(table_frame, columns=columns, show="headings")
-        self.cars_table.heading("id", text="ID")
-        self.cars_table.heading("rental_id", text="Aluguel")
-        self.cars_table.heading("issue_date", text="Data de Emissão")
-        self.cars_table.heading("amount", text="Valor")
-        self.cars_table.heading("paid", text="Pago")
-        self.cars_table.column("id", width=5)
-        self.cars_table.column("rental_id", width=80)
-        self.cars_table.column("issue_date", width=10)
-        self.cars_table.column("amount", width=10)
-        self.cars_table.column("paid", width=10)
-        self.cars_table.pack(fill="both", expand=False)
+        self.invoices_table = ttk.Treeview(table_frame, columns=columns, show="headings")
+        self.invoices_table.heading("id", text="ID")
+        self.invoices_table.heading("rental_id", text="Aluguel")
+        self.invoices_table.heading("issue_date", text="Data de Emissão")
+        self.invoices_table.heading("amount", text="Valor")
+        self.invoices_table.heading("tax", text="Imposto")
+        self.invoices_table.heading("total", text="Total")
+        self.invoices_table.heading("status", text="Estado")
+        self.invoices_table.column("id", width=5)
+        self.invoices_table.column("rental_id", width=80)
+        self.invoices_table.column("issue_date", width=10)
+        self.invoices_table.column("amount", width=10)
+        self.invoices_table.column("tax", width=10)
+        self.invoices_table.column("total", width=10)
+        self.invoices_table.column("status", width=10)
+        self.invoices_table.pack(fill="both", expand=False)
 
         self.handle_get_all_invoices()
 

@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from database import init_db, get_connection, statistics
 from login import LoginWindow
-from service import CustomerService, CarService, RentalService, InvoiceService
+from service import CustomerService, CarService, RentalService, InvoiceService, UserService
 
 class MainWindow (tk.Tk):
     
@@ -23,7 +23,7 @@ class MainWindow (tk.Tk):
         self.customer_service = CustomerService()
         self.rental_service = RentalService()
         self.invoice_service = InvoiceService()
-
+        self.user_service = UserService()
         self.mainloop()
 
 # =========================================
@@ -38,6 +38,50 @@ class MainWindow (tk.Tk):
             messagebox.showerror("Validação", str(e))
         except Exception as e:
             messagebox.showerror("Erro", str(e))
+    
+    def handle_update_customer(self, customer_id, name):
+        try:
+            self.customer_service.update_customer(customer_id, name)
+            messagebox.showinfo("Sucesso", "Cliente atualizado com sucesso.")
+            self.show_customers()
+        except ValueError as e:
+            messagebox.showerror("Validação", str(e))
+        except Exception as e:
+            messagebox.showerror("Erro", str(e))
+
+    def handle_delete_customer(self, customer_id):
+        try:
+            self.customer_service.delete_customer(customer_id)
+            messagebox.showinfo("Sucesso", "Cliente apagado com sucesso.")
+            self.show_customers()
+        except Exception as e:
+            messagebox.showerror("Erro", str(e))
+
+    def handle_get_all_customers(self):
+        
+        for item in self.customers_table.get_children():
+            self.customers_table.delete(item)
+    
+        search = self.search_var.get().strip().lower()
+        customers = self.customer_service.get_all_customers()
+        
+        if search:
+            customers = [
+                customer for customer in customers
+                if search in customer["name"].lower()
+                or search in customer["nif"].lower()
+            ]
+
+        for customer in customers:
+            self.customers_table.insert(
+            "",
+            "end",
+            values=(
+                customer["id"],
+                customer["name"],
+                customer["nif"]
+            )
+        )
 
 # =========================================
 # HANDLERS - CARS
@@ -52,11 +96,85 @@ class MainWindow (tk.Tk):
         except Exception as e:
             messagebox.showerror("Erro", str(e))
 
+    def handle_get_all_cars(self):
+        
+        for item in self.cars_table.get_children():
+            self.cars_table.delete(item)
+    
+        search = self.search_var.get().strip().lower()
+        cars = self.car_service.get_all_cars()
+        
+        if search:
+            cars = [
+                car for car in cars
+                if search in car["brand"].lower()
+                or search in car["model"].lower()
+                or search in car["plate"].lower()
+            ]
+
+        for car in cars:
+            self.cars_table.insert(
+            "",
+            "end",
+            values=(
+                car["id"],
+                car["brand"],
+                car["model"],
+                car["year"],
+                car["plate"]
+            )
+        )
+
 # =========================================
 # HANDLERS - RENTALS
 # =========================================
     def handle_insert_rental(self):
         pass
+    
+    def handle_get_all_rentals(self):
+        
+        for item in self.rentals_table.get_children():
+            self.rentals_table.delete(item)
+    
+        search = self.search_var.get().strip().lower()
+        rentals = self.rental_service.get_all_rentals()
+        cars = self.car_service.get_all_cars()
+        customers = self.customer_service.get_all_customers()
+
+        car_map = {}
+        for car in cars:
+            car_map[car["id"]] = (f"{car['brand']} {car['model']}")
+
+        customer_map = {}
+        for customer in customers:
+            customer_map[customer["id"]] = (customer["name"])
+        
+        filtered_rentals = []
+
+        for rental in rentals:
+            car_name = car_map.get(rental["car_id"], "Desconhecido")
+            customer_name = customer_map.get(rental["customer_id"], "Desconhecido")
+            if (not search or search in car_name.lower() or search in customer_name.lower()):
+                filtered_rentals.append({
+                    "id": rental["id"],
+                    "car": car_name,
+                    "customer": customer_name,
+                    "start_date": rental["start_date"],
+                    "end_date": rental["end_date"]
+                })
+
+        for rental in filtered_rentals:
+            self.rentals_table.insert(
+                "",
+                "end",
+                values=(
+                    rental["id"],
+                    rental["car"],
+                    rental["customer"],
+                    rental["start_date"],
+                    rental["end_date"]
+                )
+            )
 
 # =========================================
 # HANDLERS - INVOICES
@@ -64,17 +182,71 @@ class MainWindow (tk.Tk):
     def handle_insert_invoice(self):
         pass
 
+    def handle_get_all_invoices(self):
+        
+        for item in self.invoices_table.get_children():
+            self.invoices_table.delete(item)
+    
+        search = self.search_var.get().strip().lower()
+        invoices = self.invoice_service.get_all_invoices()
+        
+        if search:
+            invoices = [
+                invoice for invoice in invoices
+                if search in invoice["rental_id"].lower()
+            ]
+
+        for invoice in invoices:
+            self.invoices_table.insert(
+                "",
+                "end",
+                values=(
+                    invoice["id"],
+                    invoice["rental_id"],
+                    invoice["issue_date"]
+                )
+            )
+
+
 # =========================================
 # HANDLERS - USERS
 # =========================================
-    def handle_insert_user(self, nome, login, role):
+    def handle_insert_user(self, nome, login, password, role):
         try:
-            self.login.insert_user(nome, login, role)
+            self.user_service.create_user(nome, login, password, role)
             messagebox.showinfo("Sucesso", "Utilizador criado com sucesso.")
+            self.show_users()
         except ValueError as e:
             messagebox.showerror("Validação", str(e))
         except Exception as e:
             messagebox.showerror("Erro", str(e))
+
+    def handle_get_all_users(self):
+        for item in self.users_table.get_children():
+            self.users_table.delete(item)
+    
+        search = self.search_var.get().strip().lower()
+        users = self.user_service.get_all_users()
+        
+        if search:
+            users = [
+                user for user in users
+                if search in user["name"].lower()
+                or search in user["login"].lower()
+                or search in user["role"].lower()
+            ]
+
+        for user in users:
+            self.users_table.insert(
+            "",
+            "end",
+            values=(
+                user["id"],
+                user["name"],
+                user["login"],
+                user["role"]
+            )
+        )
 
 
     def show(self):
@@ -151,6 +323,7 @@ class MainWindow (tk.Tk):
             lbl_small = tk.Label(card, text=small_text, font=("Arial", 10), bg="#F4F6FA", fg="#7f8c8d")
             lbl_small.pack(pady=(5, 0))
 
+
 # =========================================
 # CLIENTES
 # =========================================
@@ -161,127 +334,138 @@ class MainWindow (tk.Tk):
         sidebar = tk.Frame(self.main_content, bg="#34495e", width=220)
         sidebar.pack(side="left", fill="y")
 
-        # ÁREA DE CONTEÚDO
-        self.customers_content = tk.Frame(self.main_content, bg="#F4F6FA")
+        self.top_frame = tk.Frame(self.main_content, bg="#F4F6FA", height=50)
+        self.top_frame.pack(fill="x", padx=20)
+
+        self.customers_content = tk.Frame(self.main_content, bg="#F4F6FA", width=780)
         self.customers_content.pack(side="right", fill="both", expand=True)
 
-        # TÍTULO SIDEBAR
-        lbl_customers = tk.Label(sidebar, text="Clientes", bg="#34495e", fg="white", font=("Arial", 16, "bold"))
-        lbl_customers.pack(pady=20)
+        title = tk.Label(self.top_frame, text="Clientes", font=("Arial", 22, "bold"), bg="#F4F6FA")
+        title.pack(pady=10)
+        self.search_var = tk.StringVar()
+        search_entry = tk.Entry(self.top_frame, textvariable=self.search_var, font=("Arial", 11))
+        search_entry.pack(side="left", padx=(0, 10), ipady=5)
+        btn_search = tk.Button(self.top_frame, text="Filtrar", bg="#2980b9", command=self.handle_get_all_customers, fg="white", padx=15)
+        btn_search.pack(side="left")
+        btn_delete = tk.Button(self.top_frame, text="Apagar", bg="#c0392b", command=self.show_delete_customer, fg="white")
+        btn_delete.pack(side="right", padx=5)
+        btn_update = tk.Button(self.top_frame, text="Atualizar", bg="#2980b9", command=self.show_update_customer, fg="white")
+        btn_update.pack(side="right", padx=5)
+        btn_insert = tk.Button(self.top_frame, text="Inserir", bg="#2980b9", command=self.show_insert_customer, fg="white")
+        btn_insert.pack(side="right", padx=5)    
 
-        # BOTÕES SIDEBAR
-        btn_insert = tk.Button(sidebar, text="Inserir", width=20, bg="#34495e", fg="white", relief="groove", command=self.show_insert_customer)
-        btn_insert.pack(pady=5)
-        btn_update = tk.Button(sidebar, text="Atualizar", width=20, bg="#34495e", fg="white", relief="groove", command=self.show_update_customer)
-        btn_update.pack(pady=5)
-        btn_delete = tk.Button(sidebar, text="Apagar", width=20, bg="#34495e", fg="white", relief="groove")
-        btn_delete.pack(pady=5)
-        btn_list = tk.Button(sidebar, text="Listar", width=20, bg="#34495e", fg="white", relief="groove")
-        btn_list.pack(pady=5)
-       
-        self.show_insert_customer() # Mostrar a janela de inserção por padrão
+        table_frame = tk.Frame(self.customers_content, bg="#F4F6FA")
+        table_frame.pack(fill="both", expand=True, padx=20, pady=20)
+        columns = ("id", "name", "nif")
 
-    # LIMPAR ÁREA
-    def clear_customers_content(self):
-        for widget in self.customers_content.winfo_children():
-            widget.destroy()
+        self.customers_table = ttk.Treeview(table_frame, columns=columns, show="headings")
+        self.customers_table.heading("id", text="ID")
+        self.customers_table.heading("name", text="Nome")
+        self.customers_table.heading("nif", text="NIF")
+        self.customers_table.column("id", width=5)
+        self.customers_table.column("name", width=80)
+        self.customers_table.column("nif", width=10)
+        self.customers_table.pack(fill="both", expand=False)
 
-    # INSERIR CLIENTE
+        self.handle_get_all_customers()
+
     def show_insert_customer(self):
-        self.clear_customers_content()
+        win = tk.Toplevel(self)
 
-        titulo = tk.Label(self.customers_content, text="Inserir Cliente", font=("Arial", 20, "bold"), bg="#F4F6FA")
-        titulo.pack(pady=20)
+        win.title("Inserir Cliente")
+        win.geometry("400x750")
+        win.configure(bg="#F4F6FA")
 
-        form = tk.Frame(self.customers_content, bg="#F4F6FA")
-        form.pack(pady=20)
+        tk.Label(win, text="Nome", bg="#F4F6FA", font=("Arial", 12)).pack(anchor="w", padx=30, pady=(20, 5))
+        ent_name = tk.Entry(win, font=("Arial", 11))
+        ent_name.pack(fill="x", padx=30, ipady=5)
+        tk.Label(win, text="NIF", bg="#F4F6FA", font=("Arial", 12)).pack(anchor="w", padx=30, pady=(15, 5))
+        ent_nif = tk.Entry(win, font=("Arial", 11))
+        ent_nif.pack(fill="x", padx=30, ipady=5)
+        tk.Label(win, text="Nº Doc. Identificação:", bg="#F4F6FA", font=("Arial", 12)).pack(anchor="w", padx=30, pady=(15, 5))
+        entry_idcard = tk.Entry(win, font=("Arial", 11))
+        entry_idcard.pack(fill="x", padx=30, ipady=5)
+        tk.Label(win, text="Data de Nascimento:", bg="#F4F6FA", font=("Arial", 12)).pack(anchor="w", padx=30, pady=(15, 5))
+        entry_birthdate = tk.Entry(win, font=("Arial", 11))
+        entry_birthdate.pack(fill="x", padx=30, ipady=5)
+        tk.Label(win, text="E-mail:", bg="#F4F6FA", font=("Arial", 12)).pack(anchor="w", padx=30, pady=(15, 5))
+        entry_email = tk.Entry(win, font=("Arial", 11))
+        entry_email.pack(fill="x", padx=30, ipady=5)
+        tk.Label(win, text="Telefone:", bg="#F4F6FA", font=("Arial", 12)).pack(anchor="w", padx=30, pady=(15, 5))
+        entry_phone = tk.Entry(win, font=("Arial", 11))
+        entry_phone.pack(fill="x", padx=30, ipady=5)
+        tk.Label(win, text="Morada:", bg="#F4F6FA", font=("Arial", 12)).pack(anchor="w", padx=30, pady=(15, 5))
+        entry_address = tk.Entry(win, font=("Arial", 11))
+        entry_address.pack(fill="x", padx=30, ipady=5)
+        tk.Label(win, text="Carta de Condução:", bg="#F4F6FA", font=("Arial", 12)).pack(anchor="w", padx=30, pady=(15, 5))
+        entry_drivinglicense = tk.Entry(win, font=("Arial", 11))
+        entry_drivinglicense.pack(fill="x", padx=30, ipady=5)
 
-        tk.Label(form, text="Nome:", bg="#F4F6FA", font=("Arial", 12)).grid(row=0, column=0, pady=10, sticky="w")
-        entry_nome = tk.Entry(form, width=35)
-        entry_nome.grid(row=0, column=1, pady=10)
-        tk.Label(form, text="NIF:", bg="#F4F6FA", font=("Arial", 12)).grid(row=1, column=0, pady=10, sticky="w")
-        entry_nif = tk.Entry(form, width=35)
-        entry_nif.grid(row=1, column=1, pady=10)
-        tk.Label(form, text="Nº Doc. Identificação:", bg="#F4F6FA", font=("Arial", 12)).grid(row=2, column=0, pady=10, sticky="w")
-        entry_idcard = tk.Entry(form, width=35)
-        entry_idcard.grid(row=2, column=1, pady=10)
-        tk.Label(form, text="Data de Nascimento:", bg="#F4F6FA", font=("Arial", 12)).grid(row=3, column=0, pady=10, sticky="w")
-        entry_birthdate = tk.Entry(form, width=35)
-        entry_birthdate.grid(row=3, column=1, pady=10)
-        tk.Label(form, text="E-mail:", bg="#F4F6FA", font=("Arial", 12)).grid(row=4, column=0, pady=10, sticky="w")
-        entry_email = tk.Entry(form, width=35)
-        entry_email.grid(row=4, column=1, pady=10)
-        tk.Label(form, text="Telefone:", bg="#F4F6FA", font=("Arial", 12)).grid(row=5, column=0, pady=10, sticky="w")
-        entry_phone = tk.Entry(form, width=35)
-        entry_phone.grid(row=5, column=1, pady=10)
-        tk.Label(form, text="Morada:", bg="#F4F6FA", font=("Arial", 12)).grid(row=6, column=0, pady=10, sticky="w")
-        entry_address = tk.Entry(form, width=35)
-        entry_address.grid(row=6, column=1, pady=10)
-        tk.Label(form, text="Carta de Condução:", bg="#F4F6FA", font=("Arial", 12)).grid(row=7, column=0, pady=10, sticky="w")
-        entry_drivinglicense = tk.Entry(form, width=35)
-        entry_drivinglicense.grid(row=7, column=1, pady=10)
+        def save_customer():
+            name = ent_name.get()
+            nif = ent_nif.get()
+            idcard = entry_idcard.get()
+            birthdate = entry_birthdate.get()
+            email = entry_email.get()
+            phone = entry_phone.get()
+            address = entry_address.get()
+            drivinglicense = entry_drivinglicense.get()           
 
-        btn_save = tk.Button(self.customers_content, text="Salvar Cliente", bg="#2980b9", fg="white", width=20, 
-                             command=lambda: self.handle_insert_customer(entry_nome.get(), entry_nif.get(), 
-                                                                         entry_idcard.get(), entry_birthdate.get(), 
-                                                                         entry_email.get(), entry_phone.get(), 
-                                                                         entry_address.get(), entry_drivinglicense.get()))
-        btn_save.pack(pady=20)
+            if not name or not nif:
+                messagebox.showwarning("Aviso", "Preencha todos os campos")
+                return
 
-    # ATUALIZAR CLIENTE
+            self.handle_insert_customer(name, nif, idcard, birthdate, email, phone, address, drivinglicense)
+            win.destroy()
+
+        tk.Button(win, text="Salvar", bg="#27ae60", fg="white", command=save_customer).pack(pady=25)
+
     def show_update_customer(self):
-        self.clear_customers_content()
+        selected = self.customers_table.selection()
 
-        titulo = tk.Label(self.customers_content,text="Atualizar Cliente",font=("Arial", 20, "bold"),bg="#F4F6FA")
-        titulo.pack(pady=20)
+        if not selected:
+            messagebox.showwarning("Aviso", "Selecione um cliente")
+            return
+        
+        values = self.customers_table.item(selected[0])["values"]
+        customer_id = values[0]
+        customer_name = values[1]
 
-        form = tk.Frame(self.customers_content, bg="#F4F6FA")
-        form.pack(pady=20)
+        win = tk.Toplevel(self)
 
-        tk.Label(form, text="ID:", bg="#F4F6FA", font=("Arial", 12)).grid(row=0, column=0, pady=10, sticky="w")
-        entry_id = tk.Entry(form, width=35)
-        entry_id.grid(row=0, column=1, pady=10)
-        tk.Label(form, text="Novo Nome:", bg="#F4F6FA", font=("Arial", 12)).grid(row=1, column=0, pady=10, sticky="w")
-        entry_nome = tk.Entry(form, width=35)
-        entry_nome.grid(row=1, column=1, pady=10)
-        tk.Label(form, text="Novo NIF:", bg="#F4F6FA", font=("Arial", 12)).grid(row=2, column=0, pady=10, sticky="w")
-        entry_nif = tk.Entry(form, width=35)
-        entry_nif.grid(row=2, column=1, pady=10)
-        tk.Label(form, text="Novo Nº Doc. Identificação:", bg="#F4F6FA", font=("Arial", 12)).grid(row=3, column=0, pady=10, sticky="w")
-        entry_idcard = tk.Entry(form, width=35)
-        entry_idcard.grid(row=3, column=1, pady=10)
-        tk.Label(form, text="Nova Data de Nascimento:", bg="#F4F6FA", font=("Arial", 12)).grid(row=4, column=0, pady=10, sticky="w")
-        entry_birthdate = tk.Entry(form, width=35)
-        entry_birthdate.grid(row=4, column=1, pady=10)
-        tk.Label(form, text="Novo E-mail:", bg="#F4F6FA", font=("Arial", 12)).grid(row=5, column=0, pady=10, sticky="w")
-        entry_email = tk.Entry(form, width=35)
-        entry_email.grid(row=5, column=1, pady=10)
-        tk.Label(form, text="Novo Telefone:", bg="#F4F6FA", font=("Arial", 12)).grid(row=6, column=0, pady=10, sticky="w")
-        entry_phone = tk.Entry(form, width=35)
-        entry_phone.grid(row=6, column=1, pady=10)
-        tk.Label(form, text="Nova Morada:", bg="#F4F6FA", font=("Arial", 12)).grid(row=7, column=0, pady=10, sticky="w")
-        entry_address = tk.Entry(form, width=35)
-        entry_address.grid(row=7, column=1, pady=10)
-        tk.Label(form, text="Nova Carta de Condução:", bg="#F4F6FA", font=("Arial", 12)).grid(row=8, column=0, pady=10, sticky="w")
-        entry_drivinglicense = tk.Entry(form, width=35)
-        entry_drivinglicense.grid(row=8, column=1, pady=10)
+        win.title("Atualizar Cliente")
+        win.geometry("400x250")
+        win.configure(bg="#F4F6FA")
 
-        btn_save = tk.Button(self.customers_content, text="Atualizar Cliente", bg="#2980b9", fg="white", width=20, 
-                             command=lambda: self.handle_update_customer(entry_id.get(), entry_nome.get(), entry_nif.get(), 
-                                                                         entry_idcard.get(), entry_birthdate.get(), 
-                                                                         entry_email.get(), entry_phone.get(), 
-                                                                         entry_address.get(), entry_drivinglicense.get()))
-        btn_save.pack(pady=20)
+        tk.Label(win, text="Nome", bg="#F4F6FA", font=("Arial", 12)).pack(anchor="w", padx=30, pady=(20, 5))
 
-    # ATUALIZAR CLIENTE
-    def show_update_customer(self):
-        self.clear_customers_content()
+        ent_name = tk.Entry(win, font=("Arial", 11))
+        ent_name.insert(0, customer_name)
+        ent_name.pack(fill="x", padx=30, ipady=5)
 
-        titulo = tk.Label(self.customers_content,text="Atualizar Cliente",font=("Arial", 20, "bold"),bg="#F4F6FA")
-        titulo.pack(pady=20)
+        def save_update():
+            name = ent_name.get()
+            self.customer_service.update_customer(customer_id, name)
+            win.destroy()
 
-        form = tk.Frame(self.customers_content, bg="#F4F6FA")
-        form.pack(pady=20)
+        tk.Button(win, text="Atualizar",bg="#2980b9", fg="white", command=save_update).pack(pady=25)
+
+    def show_delete_customer(self):
+
+        selected = self.customers_table.selection()
+        if not selected:
+            messagebox.showwarning("Aviso", "Selecione um cliente")
+            return
+
+        values = self.customers_table.item(selected[0])["values"]
+        customer_id = values[0]
+
+        confirm = messagebox.askyesno("Confirmar", "Deseja apagar o cliente?")
+        if not confirm:
+            return
+
+        self.handle_delete_customer(customer_id)
+
 
 # =========================================
 # FROTA
@@ -293,86 +477,192 @@ class MainWindow (tk.Tk):
         sidebar = tk.Frame(self.main_content, bg="#34495e", width=220)
         sidebar.pack(side="left", fill="y")
 
-        # ÁREA DE CONTEÚDO
-        self.fleet_content = tk.Frame(self.main_content, bg="#F4F6FA")
+        self.top_frame = tk.Frame(self.main_content, bg="#F4F6FA", height=50)
+        self.top_frame.pack(fill="x", padx=20)
+
+        self.fleet_content = tk.Frame(self.main_content, bg="#F4F6FA", width=780)
         self.fleet_content.pack(side="right", fill="both", expand=True)
 
-        # TÍTULO SIDEBAR
-        lbl_fleet = tk.Label(sidebar, text="Frota", bg="#34495e", fg="white", font=("Arial", 16, "bold"))
-        lbl_fleet.pack(pady=20)
+        title = tk.Label(self.top_frame, text="Frota", font=("Arial", 22, "bold"), bg="#F4F6FA")
+        title.pack(pady=10)
+        self.search_var = tk.StringVar()
+        search_entry = tk.Entry(self.top_frame, textvariable=self.search_var, font=("Arial", 11))
+        search_entry.pack(side="left", padx=(0, 10), ipady=5)
+        btn_search = tk.Button(self.top_frame, text="Filtrar", bg="#2980b9", command=self.handle_get_all_cars, fg="white", padx=15)
+        btn_search.pack(side="left")
+        btn_delete = tk.Button(self.top_frame, text="Apagar", bg="#c0392b", fg="white")
+        btn_delete.pack(side="right", padx=5)
+        btn_update = tk.Button(self.top_frame, text="Atualizar", bg="#2980b9", fg="white")
+        btn_update.pack(side="right", padx=5)
+        btn_insert = tk.Button(self.top_frame, text="Inserir", bg="#2980b9", fg="white")
+        btn_insert.pack(side="right", padx=5)    
 
-        # BOTÕES SIDEBAR
-        btn_insert = tk.Button(sidebar, text="Inserir", width=20, bg="#34495e", fg="white", relief="groove", command=self.show_insert_car)
-        btn_insert.pack(pady=5)
-        btn_update = tk.Button(sidebar, text="Atualizar", width=20, bg="#34495e", fg="white", relief="groove")
-        btn_update.pack(pady=5)
-        btn_delete = tk.Button(sidebar, text="Apagar", width=20, bg="#34495e", fg="white", relief="groove")
-        btn_delete.pack(pady=5)
-        btn_list = tk.Button(sidebar, text="Listar", width=20, bg="#34495e", fg="white", relief="groove")
-        btn_list.pack(pady=5)
-       
-        self.show_insert_car()
+        table_frame = tk.Frame(self.fleet_content, bg="#F4F6FA")
+        table_frame.pack(fill="both", expand=True, padx=20, pady=20)
+        columns = ("id", "brand", "model", "year", "plate")
 
-    # LIMPAR ÁREA
-    def clear_fleet_content(self):
-        for widget in self.fleet_content.winfo_children():
-            widget.destroy()
+        self.cars_table = ttk.Treeview(table_frame, columns=columns, show="headings")
+        self.cars_table.heading("id", text="ID")
+        self.cars_table.heading("brand", text="Marca")
+        self.cars_table.heading("model", text="Modelo")
+        self.cars_table.heading("year", text="Ano")
+        self.cars_table.heading("plate", text="Matrícula")
+        self.cars_table.column("id", width=5)
+        self.cars_table.column("brand", width=80)
+        self.cars_table.column("model", width=10)
+        self.cars_table.column("year", width=10)
+        self.cars_table.column("plate", width=10)
+        self.cars_table.pack(fill="both", expand=False)
 
-    # INSERIR CARRO
-    def show_insert_car(self):
-        self.clear_fleet_content()
-
-        titulo = tk.Label(self.fleet_content, text="Inserir Carro", font=("Arial", 20, "bold"), bg="#F4F6FA")
-        titulo.pack(pady=20)
-
-        form = tk.Frame(self.fleet_content, bg="#F4F6FA")
-        form.pack(pady=20)
-
-        tk.Label(form, text="Marca:", bg="#F4F6FA", font=("Arial", 12)).grid(row=0, column=0, pady=10, sticky="w")
-        entry_brand = tk.Entry(form, width=35)
-        entry_brand.grid(row=0, column=1, pady=10)
-        tk.Label(form, text="Modelo:", bg="#F4F6FA", font=("Arial", 12)).grid(row=1, column=0, pady=10, sticky="w")
-        entry_model = tk.Entry(form, width=35)
-        entry_model.grid(row=1, column=1, pady=10)
-        tk.Label(form, text="Ano:", bg="#F4F6FA", font=("Arial", 12)).grid(row=2, column=0, pady=10, sticky="w")
-        entry_year = tk.Entry(form, width=35)
-        entry_year.grid(row=2, column=1, pady=10)
-        tk.Label(form, text="Matrícula:", bg="#F4F6FA", font=("Arial", 12)).grid(row=3, column=0, pady=10, sticky="w")
-        entry_plate = tk.Entry(form, width=35)
-        entry_plate.grid(row=3, column=1, pady=10)
-        tk.Label(form, text="Categoria:", bg="#F4F6FA", font=("Arial", 12)).grid(row=4, column=0, pady=10, sticky="w")
-        category_var = tk.StringVar()
-        combo_category = ttk.Combobox(form, textvariable=category_var, values=["económico", "compacto", "tamanho médio", "suv", "luxo"], state="readonly", width=33)
-        combo_category.grid(row=4, column=1, pady=10)
-        tk.Label(form, text="Tipo de Combustível:", bg="#F4F6FA", font=("Arial", 12)).grid(row=5, column=0, pady=10, sticky="w")
-        fuel_type_var = tk.StringVar()
-        combo_fuel_type = ttk.Combobox(form, textvariable=fuel_type_var, values=["gasolina", "diesel", "elétrico", "híbrido"], state="readonly", width=33)
-        combo_fuel_type.grid(row=5, column=1, pady=10)
-        tk.Label(form, text="Seguro:", bg="#F4F6FA", font=("Arial", 12)).grid(row=6, column=0, pady=10, sticky="w")
-        entry_insurance = tk.Entry(form, width=35)
-        entry_insurance.grid(row=6, column=1, pady=10)
-        tk.Label(form, text="Preço Diário:", bg="#F4F6FA", font=("Arial", 12)).grid(row=7, column=0, pady=10, sticky="w")
-        entry_daily_rate = tk.Entry(form, width=35)
-        entry_daily_rate.grid(row=7, column=1, pady=10)
-        
-        btn_save = tk.Button(self.fleet_content, text="Salvar Carro", bg="#2980b9", fg="white", width=20, 
-                             command=lambda: self.handle_insert_car(entry_brand.get(), entry_model.get(), entry_year.get(), 
-                                                                    entry_plate.get(), combo_category.get(), combo_fuel_type.get(), 
-                                                                   entry_insurance.get(), entry_daily_rate.get()))
-        btn_save.pack(pady=20)
+        self.handle_get_all_cars()
 
 
 # =========================================
 # ALUGUER
 # =========================================
     def show_rentals(self):
-        pass
+        self.clear_main_content()
+
+        # NAVBAR LATERAL
+        sidebar = tk.Frame(self.main_content, bg="#34495e", width=220)
+        sidebar.pack(side="left", fill="y")
+
+        self.top_frame = tk.Frame(self.main_content, bg="#F4F6FA", height=50)
+        self.top_frame.pack(fill="x", padx=20)
+
+        self.rentals_content = tk.Frame(self.main_content, bg="#F4F6FA", width=780)
+        self.rentals_content.pack(side="right", fill="both", expand=True)
+
+        title = tk.Label(self.top_frame, text="Aluguer", font=("Arial", 22, "bold"), bg="#F4F6FA")
+        title.pack(pady=10)
+        self.search_var = tk.StringVar()
+        search_entry = tk.Entry(self.top_frame, textvariable=self.search_var, font=("Arial", 11))
+        search_entry.pack(side="left", padx=(0, 10), ipady=5)
+        btn_search = tk.Button(self.top_frame, text="Filtrar", bg="#2980b9", command=self.handle_get_all_rentals, fg="white", padx=15)
+        btn_search.pack(side="left")
+        btn_update = tk.Button(self.top_frame, text="Atualizar", bg="#2980b9", fg="white")
+        btn_update.pack(side="right", padx=5)
+        btn_insert = tk.Button(self.top_frame, text="Inserir", bg="#2980b9", command=self.show_insert_rental, fg="white")
+        btn_insert.pack(side="right", padx=5)    
+
+        table_frame = tk.Frame(self.rentals_content, bg="#F4F6FA")
+        table_frame.pack(fill="both", expand=True, padx=20, pady=20)
+        columns = ("id", "car_id", "customer_id", "start_date", "end_date")
+
+        self.rentals_table = ttk.Treeview(table_frame, columns=columns, show="headings")
+        self.rentals_table.heading("id", text="ID")
+        self.rentals_table.heading("car", text="Carro")
+        self.rentals_table.heading("customer", text="Cliente")
+        self.rentals_table.heading("start_date", text="Data de Início")
+        self.rentals_table.heading("end_date", text="Data de Fim")
+        self.rentals_table.column("id", width=5)
+        self.rentals_table.column("car", width=80)
+        self.rentals_table.column("customer", width=10)
+        self.rentals_table.column("start_date", width=10)
+        self.rentals_table.column("end_date", width=10)
+        self.rentals_table.pack(fill="both", expand=False)
+
+        self.handle_get_all_rentals()
+
+    def show_insert_rental(self):
+        win = tk.Toplevel(self)
+
+        win.title("Alugar Carro")
+        win.geometry("400x750")
+        win.configure(bg="#F4F6FA")
+
+        cars = self.car_service.get_all_cars()
+        customers = self.customer_service.get_all_customers()
+
+        car_map = {}
+        for car in cars:
+            label = f"{car['brand']} {car['model']} ({car['plate']})"
+            car_map[label] = car["id"]
+
+        customer_map = {}
+        for customer in customers:
+            label = f"{customer['name']} ({customer['nif']})"
+            customer_map[label] = customer["id"]
+
+        tk.Label(win, text="Carro", bg="#F4F6FA", font=("Arial", 12)).pack(anchor="w", padx=30, pady=(20, 5))
+        role_car = tk.StringVar()
+        combo_car = ttk.Combobox(win, textvariable=role_car, values=list(car_map.keys()), state="readonly", width=33)
+        combo_car.pack(fill="x", padx=30, ipady=5)
+        tk.Label(win, text="Cliente", bg="#F4F6FA", font=("Arial", 12)).pack(anchor="w", padx=30, pady=(20, 5))
+        role_customer = tk.StringVar()
+        combo_customer = ttk.Combobox(win, textvariable=role_customer, values=list(customer_map.keys()), state="readonly", width=33)
+        combo_customer.pack(fill="x", padx=30, ipady=5)
+        tk.Label(win, text="Data de Início:", bg="#F4F6FA", font=("Arial", 12)).pack(anchor="w", padx=30, pady=(20, 5))
+        ent_start_date = tk.Entry(win, font=("Arial", 11))
+        ent_start_date.pack(fill="x", padx=30, ipady=5)      
+        tk.Label(win, text="Data de Fim:", bg="#F4F6FA", font=("Arial", 12)).pack(anchor="w", padx=30, pady=(15, 5))
+        ent_end_date = tk.Entry(win, font=("Arial", 11))
+        ent_end_date.pack(fill="x", padx=30, ipady=5)
+
+        def save_rental():
+            car_label = combo_car.get()
+            customer_label = combo_customer.get()
+            start_date = ent_start_date.get().strip()
+            end_date = ent_end_date.get().strip()
+
+            if not car_label or not customer_label or not start_date or not end_date:
+                messagebox.showwarning("Aviso", "Preencha todos os campos")
+                return
+
+            car_id = car_map[car_label]
+            customer_id = customer_map[customer_label]
+            self.handle_insert_rental(car_id, customer_id, start_date, end_date)
+            win.destroy()
+
+        tk.Button(win, text="Salvar", bg="#27ae60", fg="white", command=save_rental).pack(pady=25)
 
 # =========================================
 # FATURAS
 # =========================================
     def show_invoices(self):
-        pass
+        self.clear_main_content()
+
+        # NAVBAR LATERAL
+        sidebar = tk.Frame(self.main_content, bg="#34495e", width=220)
+        sidebar.pack(side="left", fill="y")
+
+        self.top_frame = tk.Frame(self.main_content, bg="#F4F6FA", height=50)
+        self.top_frame.pack(fill="x", padx=20)
+
+        self.invoices_content = tk.Frame(self.main_content, bg="#F4F6FA", width=780)
+        self.invoices_content.pack(side="right", fill="both", expand=True)
+
+        title = tk.Label(self.top_frame, text="Faturas", font=("Arial", 22, "bold"), bg="#F4F6FA")
+        title.pack(pady=10)
+        self.search_var = tk.StringVar()
+        search_entry = tk.Entry(self.top_frame, textvariable=self.search_var, font=("Arial", 11))
+        search_entry.pack(side="left", padx=(0, 10), ipady=5)
+        btn_search = tk.Button(self.top_frame, text="Filtrar", bg="#2980b9", command=self.handle_get_all_invoices, fg="white", padx=15)
+        btn_search.pack(side="left")
+        btn_update = tk.Button(self.top_frame, text="Atualizar", bg="#2980b9", fg="white")
+        btn_update.pack(side="right", padx=5)
+        btn_insert = tk.Button(self.top_frame, text="Inserir", bg="#2980b9", fg="white")
+        btn_insert.pack(side="right", padx=5)
+
+        table_frame = tk.Frame(self.invoices_content, bg="#F4F6FA")
+        table_frame.pack(fill="both", expand=True, padx=20, pady=20)
+        columns = ("id", "rental_id", "issue_date", "amount", "paid")
+
+        self.cars_table = ttk.Treeview(table_frame, columns=columns, show="headings")
+        self.cars_table.heading("id", text="ID")
+        self.cars_table.heading("rental_id", text="Aluguel")
+        self.cars_table.heading("issue_date", text="Data de Emissão")
+        self.cars_table.heading("amount", text="Valor")
+        self.cars_table.heading("paid", text="Pago")
+        self.cars_table.column("id", width=5)
+        self.cars_table.column("rental_id", width=80)
+        self.cars_table.column("issue_date", width=10)
+        self.cars_table.column("amount", width=10)
+        self.cars_table.column("paid", width=10)
+        self.cars_table.pack(fill="both", expand=False)
+
+        self.handle_get_all_invoices()
+
 
 # =========================================
 # UTILIZADORES
@@ -384,83 +674,78 @@ class MainWindow (tk.Tk):
         sidebar = tk.Frame(self.main_content, bg="#34495e", width=220)
         sidebar.pack(side="left", fill="y")
 
-        # ÁREA DE CONTEÚDO
-        self.users_content = tk.Frame(self.main_content, bg="#F4F6FA")
+        self.top_frame = tk.Frame(self.main_content, bg="#F4F6FA", height=50)
+        self.top_frame.pack(fill="x", padx=20)
+
+        self.users_content = tk.Frame(self.main_content, bg="#F4F6FA", width=780)
         self.users_content.pack(side="right", fill="both", expand=True)
 
-        # TÍTULO SIDEBAR
-        lbl_users = tk.Label(sidebar, text="Utilizadores", bg="#34495e", fg="white", font=("Arial", 16, "bold"))
-        lbl_users.pack(pady=20)
+        title = tk.Label(self.top_frame, text="Utilizadores", font=("Arial", 22, "bold"), bg="#F4F6FA")
+        title.pack(pady=10)
+        self.search_var = tk.StringVar()
+        search_entry = tk.Entry(self.top_frame, textvariable=self.search_var, font=("Arial", 11))
+        search_entry.pack(side="left", padx=(0, 10), ipady=5)
+        btn_search = tk.Button(self.top_frame, text="Filtrar", bg="#2980b9", command=self.handle_get_all_users, fg="white", padx=15)
+        btn_search.pack(side="left")
+        btn_delete = tk.Button(self.top_frame, text="Apagar", bg="#c0392b", fg="white")
+        btn_delete.pack(side="right", padx=5)
+        btn_update = tk.Button(self.top_frame, text="Atualizar", bg="#2980b9", fg="white")
+        btn_update.pack(side="right", padx=5)
+        btn_insert = tk.Button(self.top_frame, text="Inserir", bg="#2980b9", command=self.show_insert_user, fg="white")
+        btn_insert.pack(side="right", padx=5)    
 
-        # BOTÕES SIDEBAR
-        btn_insert = tk.Button(sidebar, text="Inserir", bg="#34495e", fg="white", relief="groove", width=20, command=self.show_insert_user)
-        btn_insert.pack(pady=5)
-        btn_update = tk.Button(sidebar, text="Atualizar", bg="#34495e", fg="white", relief="groove", width=20, command=self.show_update_user)
-        btn_update.pack(pady=5)
-        btn_delete = tk.Button(sidebar, text="Apagar", bg="#34495e", fg="white", relief="groove", width=20)
-        btn_delete.pack(pady=5)
-        btn_list = tk.Button(sidebar, text="Listar", bg="#34495e", fg="white", relief="groove", width=20)
-        btn_list.pack(pady=5)
-       
-        self.show_insert_user() # Mostrar a janela de inserção por padrão
+        table_frame = tk.Frame(self.users_content, bg="#F4F6FA")
+        table_frame.pack(fill="both", expand=True, padx=20, pady=20)
+        columns = ("id", "name", "login", "role")
 
-    # LIMPAR ÁREA
-    def clear_users_content(self):
-        for widget in self.users_content.winfo_children():
-            widget.destroy()
+        self.users_table = ttk.Treeview(table_frame, columns=columns, show="headings")
+        self.users_table.heading("id", text="ID")
+        self.users_table.heading("name", text="Nome")
+        self.users_table.heading("login", text="Login")
+        self.users_table.heading("role", text="Role")
+        self.users_table.column("id", width=5)
+        self.users_table.column("name", width=80)
+        self.users_table.column("login", width=80)
+        self.users_table.column("role", width=80)
+        self.users_table.pack(fill="both", expand=False)
 
-    # INSERIR UTILIZADOR
+        self.handle_get_all_users()
+
     def show_insert_user(self):
-        self.clear_users_content()
+        win = tk.Toplevel(self)
 
-        titulo = tk.Label(self.users_content, text="Inserir Utilizador", font=("Arial", 20, "bold"), bg="#F4F6FA")
-        titulo.pack(pady=20)
+        win.title("Inserir Utilizador")
+        win.geometry("400x500")
+        win.configure(bg="#F4F6FA")
 
-        form = tk.Frame(self.users_content, bg="#F4F6FA")
-        form.pack(pady=20)
+        tk.Label(win, text="Nome", bg="#F4F6FA", font=("Arial", 12)).pack(anchor="w", padx=30, pady=(20, 5))
+        ent_name = tk.Entry(win, font=("Arial", 11))
+        ent_name.pack(fill="x", padx=30, ipady=5)
+        tk.Label(win, text="Login", bg="#F4F6FA", font=("Arial", 12)).pack(anchor="w", padx=30, pady=(15, 5))
+        ent_login = tk.Entry(win, font=("Arial", 11))
+        ent_login.pack(fill="x", padx=30, ipady=5)
+        tk.Label(win, text="Senha", bg="#F4F6FA", font=("Arial", 12)).pack(anchor="w", padx=30, pady=(15, 5))
+        entry_password = tk.Entry(win, font=("Arial", 11), show="*")
+        entry_password.pack(fill="x", padx=30, ipady=5)
+        tk.Label(win, text="Role:", bg="#F4F6FA", font=("Arial", 12)).pack(anchor="w", padx=30, pady=(15, 5))
+        role_var = tk.StringVar()
+        combo_role = ttk.Combobox(win, textvariable=role_var, values=["admin", "normal"], state="readonly", width=33)
+        combo_role.pack(fill="x", padx=30, ipady=5)
 
-        tk.Label(form, text="Nome:", bg="#F4F6FA", font=("Arial", 12)).grid(row=0, column=0, pady=10, sticky="w")
-        entry_nome = tk.Entry(form, width=35)
-        entry_nome.grid(row=0, column=1, pady=10)
-        tk.Label(form,text="Login:",bg="#F4F6FA",font=("Arial", 12)).grid(row=1, column=0, pady=10, sticky="w")
-        entry_login = tk.Entry(form, width=35)
-        entry_login.grid(row=1, column=1, pady=10)
-        tk.Label(form, text="Role:", bg="#F4F6FA", font=("Arial", 12)).grid(row=2, column=0, pady=10, sticky="w")
-        role_var = tk.StringVar(value="normal")
-        option_role = tk.OptionMenu(form, role_var, "administrador", "normal")
-        option_role.config(width=30)
-        option_role.grid(row=2, column=1, pady=10)
-        btn_save = tk.Button(self.users_content, text="Salvar Utilizador", bg="#2980b9", fg="white", width=20, 
-                             command=lambda: self.handle_insert_user(entry_nome.get(), entry_login.get(), role_var.get()))
-        btn_save.pack(pady=20)
+        def save_user():
+            name = ent_name.get()
+            login = ent_login.get()
+            password = entry_password.get()
+            role = combo_role.get()
 
-    # ATUALIZAR UTILIZADOR
-    def show_update_user(self):
-        self.clear_users_content()
+            if not name or not login or not password or not role:
+                messagebox.showwarning("Aviso", "Preencha todos os campos")
+                return
 
-        titulo = tk.Label(self.users_content,text="Atualizar Utilizador",font=("Arial", 20, "bold"),bg="#F4F6FA")
-        titulo.pack(pady=20)
+            self.handle_insert_user(name, login, password, role)
+            win.destroy()
 
-        form = tk.Frame(self.users_content, bg="white")
-        form.pack(pady=20)
-
-        tk.Label(form, text="ID:", bg="white", font=("Arial", 12)).grid(row=0, column=0, pady=10, sticky="w")
-        entry_id = tk.Entry(form, width=35)
-        entry_id.grid(row=0, column=1, pady=10)
-        tk.Label(form, text="Novo Nome:", bg="white", font=("Arial", 12)).grid(row=1, column=0, pady=10, sticky="w")
-        entry_nome = tk.Entry(form, width=35)
-        entry_nome.grid(row=1, column=1, pady=10)
-        tk.Label(form, text="Novo Login:", bg="white", font=("Arial", 12)).grid(row=2, column=0, pady=10, sticky="w")
-        entry_login = tk.Entry(form, width=35)
-        entry_login.grid(row=2, column=1, pady=10)
-        tk.Label(form, text="Novo Role:", bg="white", font=("Arial", 12)).grid(row=3, column=0, pady=10, sticky="w")
-        role_var = tk.StringVar(value="normal")
-        option_role = tk.OptionMenu(form, role_var, "administrador", "normal")
-        option_role.config(width=30)
-        option_role.grid(row=3, column=1, pady=10)
-        
-        btn_update = tk.Button(self.users_content, text="Atualizar Utilizador", bg="#2980b9", fg="white", width=20)
-        btn_update.pack(pady=20)
+        tk.Button(win, text="Salvar", bg="#27ae60", fg="white", command=save_user).pack(pady=25)
 
 
     def logout(self):

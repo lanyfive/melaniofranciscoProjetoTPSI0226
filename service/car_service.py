@@ -51,3 +51,27 @@ class CarService:
         plate = self._validate_plate(plate)
         self._validate_price(daily_rate)
         db.create_car(brand, model, year, plate, category, fuel_type, insurance, daily_rate)
+
+    def update_car(self, car_id, brand, model, year, plate, category, fuel_type, insurance, daily_rate):
+        if not car_id:
+            raise ValueError("ID do carro é obrigatório.")
+        
+        required = {"Marca": brand, "Modelo": model, "Matrícula": plate,
+            "Categoria": category, "Combustível": fuel_type, "Seguro": insurance}
+        for field, value in required.items():
+            if not str(value).strip():
+                raise ValueError(f"{field} é obrigatório.")
+        
+        self._validate_year(year)
+        plate = self._validate_plate(plate)
+        self._validate_price(daily_rate)
+        db.update_car(car_id, brand, model, year, plate, category, fuel_type, insurance, daily_rate)
+
+    def delete_car(self, car_id):
+        if not car_id:
+            raise ValueError("ID do carro é obrigatório.")
+        db.delete_car(car_id)
+
+    def get_all_cars(self):
+        return db.get_all_cars()
+    

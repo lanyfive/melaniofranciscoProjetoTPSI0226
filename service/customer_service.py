@@ -20,3 +20,18 @@ class CustomerService:
         if phone and not re.match(r'^\d{9}$', phone):
             raise ValueError("Telefone inválido.")
         db.create_customer(nome, nif, idcard, birthdate, email, phone, address, drivinglicense)
+
+    def update_customer(self, customer_id, nome):
+        if not customer_id:
+            raise ValueError("ID do cliente é obrigatório.")
+        if not nome.strip():
+            raise ValueError("Nome é obrigatório.")
+        db.update_customer(customer_id, nome)
+
+    def delete_customer(self, customer_id):
+        if not customer_id:
+            raise ValueError("ID do cliente é obrigatório.")
+        db.delete_customer(customer_id)
+
+    def get_all_customers(self):
+        return db.get_all_customers()

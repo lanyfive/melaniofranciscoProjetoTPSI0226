@@ -107,6 +107,35 @@ def create_car(brand: str, model: str, year: int, plate: str, category: str, fue
     finally:
         conn.close()
 
+def update_car(car_id: int, brand: str, model: str) -> bool:
+    try:
+        conn = get_connection()
+        conn.execute("UPDATE cars SET brand = ?, model = ? WHERE id = ?", (brand, model, car_id))
+        conn.commit()
+        return True
+    except sqlite3.IntegrityError:
+        return False
+    finally:
+        conn.close()
+
+def delete_car(car_id: int) -> bool:
+    try:
+        conn = get_connection()
+        conn.execute("DELETE FROM cars WHERE id = ?", (car_id,))
+        conn.commit()
+        return True
+    except sqlite3.IntegrityError:
+        return False
+    finally:
+        conn.close()
+
+def get_all_cars() -> list[dict]:
+    conn = get_connection()
+    cars = conn.execute("SELECT id, brand, model, year, plate FROM cars").fetchall()
+    conn.close()
+    return [{"id": car[0], "brand": car[1], "model": car[2], "year": car[3], "plate": car[4]} for car in cars]
+
+
 ########## CUSTOMERS #####
 def create_customer(name: str, nif: str, id_card: str, birth_date: str, email: str, phone: str, address: str, license_no: str) -> bool:
     try:
@@ -119,6 +148,35 @@ def create_customer(name: str, nif: str, id_card: str, birth_date: str, email: s
         return False
     finally:
         conn.close()
+
+def update_customer(customer_id: int, name: str) -> bool:
+    try:
+        conn = get_connection()
+        conn.execute("UPDATE customers SET name = ? WHERE id = ?", (name, customer_id))
+        conn.commit()
+        return True
+    except sqlite3.IntegrityError:
+        return False
+    finally:
+        conn.close()
+
+def delete_customer(customer_id: int) -> bool:
+    try:
+        conn = get_connection()
+        conn.execute("DELETE FROM customers WHERE id = ?", (customer_id,))
+        conn.commit()
+        return True
+    except sqlite3.IntegrityError:
+        return False
+    finally:
+        conn.close()
+
+def get_all_customers() -> list[dict]:
+    conn = get_connection()
+    customers = conn.execute("SELECT id, name, nif FROM customers").fetchall()
+    conn.close()
+    return [{"id": customer[0], "name": customer[1], "nif": customer[2]} for customer in customers]
+
 
 ########## RENTALS #####
 def create_rental(car_id: int, customer_id: int, start_date: str, end_date: str) -> bool:
@@ -134,6 +192,44 @@ def create_rental(car_id: int, customer_id: int, start_date: str, end_date: str)
         return False
     finally:
         conn.close()
+
+def update_rental(rental_id: int, return_date: str, total_cost: float) -> bool:
+    try:
+        conn = get_connection()
+        conn.execute(
+            "UPDATE rentals SET return_date = ?, total_cost = ?, status = 'devolvido' WHERE id = ?",
+            (return_date, total_cost, rental_id)
+        )
+        conn.commit()
+        return True
+    except sqlite3.IntegrityError:
+        return False
+    finally:
+        conn.close()
+
+def delete_rental(rental_id: int) -> bool:
+    try:
+        conn = get_connection()
+        conn.execute("DELETE FROM rentals WHERE id = ?", (rental_id,))
+        conn.commit()
+        return True
+    except sqlite3.IntegrityError:
+        return False
+    finally:
+        conn.close()
+
+def get_all_rentals() -> list[dict]:
+    conn = get_connection()
+    rentals = conn.execute("""SELECT rentals.id, cars.model AS car, customers.name AS customer, rentals.start_date, rentals.end_date
+    FROM rentals
+    JOIN cars
+    ON cars.id = rentals.car_id
+    JOIN customers
+    ON customers.id = rentals.customer_id
+                           """).fetchall()
+    conn.close()
+    return [{"id": rental[0], "car": rental[1], "customer": rental[2], "start_date": rental[3], "end_date": rental[4]} for rental in rentals]
+
 
 ########## INVOICES #####
 def create_invoice(rental_id: int, issue_date: str, amount: float) -> bool:
@@ -179,3 +275,31 @@ def create_user(name: str, login: str, password: str, role: str) -> bool:
         return False
     finally:
         conn.close()
+
+def update_user(user_id: int, name: str) -> bool:
+    try:
+        conn = get_connection()
+        conn.execute("UPDATE users SET name = ? WHERE id = ?", (name, user_id))
+        conn.commit()
+        return True
+    except sqlite3.IntegrityError:
+        return False
+    finally:
+        conn.close()
+
+def delete_user(user_id: int) -> bool:
+    try:
+        conn = get_connection()
+        conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
+        conn.commit()
+        return True
+    except sqlite3.IntegrityError:
+        return False
+    finally:
+        conn.close()
+
+def get_all_users() -> list[dict]:
+    conn = get_connection()
+    users = conn.execute("SELECT id, name, login, role FROM users").fetchall()
+    conn.close()
+    return [{"id": user[0], "name": user[1], "login": user[2], "role": user[3]} for user in users]

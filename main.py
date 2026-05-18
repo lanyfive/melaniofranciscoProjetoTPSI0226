@@ -462,7 +462,7 @@ class MainWindow (tk.Tk):
 
         def save_update():
             name = ent_name.get()
-            self.customer_service.update_customer(customer_id, name)
+            self.handle_update_customer(customer_id, name)
             win.destroy()
 
         tk.Button(win, text="Atualizar",bg="#2980b9", fg="white", command=save_update).pack(pady=25)
